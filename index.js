@@ -43,7 +43,7 @@ const app = express()
 const PORT = process.env.PORT || 5001
 
 const FF_TZ = 'Asia/Bangkok' // you can change
-const DAYS_AHEAD = 10
+const DAYS_AHEAD = 3
 const BASE_URL = 'https://www.forexfactory.com/calendar'
 
 const MONGODB_URI =
