@@ -54,4 +54,4 @@ This project provides an API to check Forex news events and control trading in M
 ## Notes
 - API responses are cached for 60 seconds to handle multiple clients.
 - For production, consider HTTPS and authentication.
-- Contact support for advanced integrations.# ffchecker
+- Contact support for advanced integrations.
