@@ -12,7 +12,7 @@
 
 // Input parameters
 input string API_URL = "http://your-server-ip:5001/news"; // Replace with your API endpoint
-input int POLL_INTERVAL = 60; // Poll every 60 seconds
+input int POLL_INTERVAL = 300; // Poll every 5 minutes (300 seconds)
 
 // Global variables
 int lastPollTime = 0;

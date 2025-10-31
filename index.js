@@ -131,7 +131,13 @@ async function fetchOneDay(d) {
   const browser = await puppeteer.launch({
     headless: true,
     executablePath: '/usr/bin/chromium-browser',
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--lang=th-TH', // Set browser language to Thai
+      '--timezone=Asia/Bangkok', // Set timezone to Thailand (UTC+7)
+      '--no-sandbox'
+    ]
   })
   const page = await browser.newPage()
   await page.setUserAgent(
