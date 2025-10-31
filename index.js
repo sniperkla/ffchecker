@@ -121,7 +121,7 @@ async function fetchAndStore() {
 }
 
 // Run every 3 minutes
-setInterval(fetchAndStore, 3 * 60 * 1000)
+setInterval(fetchAndStore, 9 * 60 * 1000)
 // Run once at startup
 fetchAndStore()
 
