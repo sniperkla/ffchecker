@@ -238,13 +238,13 @@ app.get('/ff-news', async (req, res) => {
 let checkNewsCache = null
 let cacheExpiry = 0
 
-app.get('/news', async (req, res) => {
+app.get('/checknews', async (req, res) => {
   const now = Date.now()
   if (checkNewsCache && now < cacheExpiry) {
     return res.json({ ...checkNewsCache, cached: true })
   }
 
-  console.log('Received request for /news')
+  console.log('Received request for /checknews')
   try {
     if (!db) await connectMongo()
     const today = dayjs().tz(FF_TZ).format('YYYY-MM-DD')
