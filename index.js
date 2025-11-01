@@ -12,13 +12,13 @@ function toUnix(dateStr, timeStr) {
   if (ampm === 'am' && hour === 12) hour = 0
 
   const parsed = dayjs
-    .tz(dateStr, 'America/New_York') // Assume scraped times are in ET
+    .tz(dateStr, FF_TZ)
     .hour(hour)
     .minute(min)
     .second(0)
     .millisecond(0)
   if (!parsed.isValid()) return null
-  return parsed.tz(FF_TZ).unix() // Convert to FF_TZ
+  return parsed.unix()
 }
 function buildFFUrl(d) {
   const month = d.format('MMM').toLowerCase()
@@ -74,7 +74,7 @@ async function fetchAndStore() {
     if (!db) await connectMongo()
     if (db) {
       const col = db.collection('ff_events')
-      const now = new Date()
+      const now = new Date(dayjs().tz(FF_TZ).format())
       let upserted = 0
       for (const e of all) {
         const filter = { date: e.date, title: e.title }
@@ -151,6 +151,14 @@ async function fetchOneDay(d) {
   )
   console.log('Browser timezone:', browserTimezone)
   await page.goto(url, { waitUntil: 'networkidle2' })
+  // Set timezone to Bangkok on ForexFactory
+  try {
+    await page.waitForSelector('select#timezone', { timeout: 5000 })
+    await page.select('select#timezone', 'Bangkok')
+    await page.waitForTimeout(1000) // Wait for page to update
+  } catch (e) {
+    console.log('Timezone selector not found or failed to set')
+  }
   // Try to select table rows with event data
   const events = await page.evaluate((dateStr) => {
     const rows = Array.from(document.querySelectorAll('tr'))
@@ -216,13 +224,13 @@ app.get('/ff-news', async (req, res) => {
           if (ampm === 'pm' && hour !== 12) hour += 12
           if (ampm === 'am' && hour === 12) hour = 0
           const parsedET = dayjs
-            .tz(e.date, 'America/New_York')
+            .tz(e.date, FF_TZ)
             .hour(hour)
             .minute(min)
             .second(0)
             .millisecond(0)
           unix = parsedET.unix() // ET time unix
-          const parsedLocal = parsedET.tz(FF_TZ)
+          const parsedLocal = parsedET
           unix_7 = parsedLocal.unix() // FF_TZ time unix
         }
       } catch (err) {
@@ -271,12 +279,12 @@ app.get('/checknews', async (req, res) => {
           if (ampm === 'pm' && hour !== 12) hour += 12
           if (ampm === 'am' && hour === 12) hour = 0
           const parsedET = dayjs
-            .tz(e.date, 'America/New_York')
+            .tz(e.date, FF_TZ)
             .hour(hour)
             .minute(min)
             .second(0)
             .millisecond(0)
-          const parsedLocal = parsedET.tz(FF_TZ)
+          const parsedLocal = parsedET
           unix_7 = parsedLocal.unix()
         }
       } catch (err) {}
