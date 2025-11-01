@@ -12,13 +12,13 @@ function toUnix(dateStr, timeStr) {
   if (ampm === 'am' && hour === 12) hour = 0
 
   const parsed = dayjs
-    .tz(dateStr, FF_TZ)
+    .tz(dateStr, 'America/New_York') // Assume scraped times are in ET
     .hour(hour)
     .minute(min)
     .second(0)
     .millisecond(0)
   if (!parsed.isValid()) return null
-  return parsed.unix()
+  return parsed.tz(FF_TZ).unix() // Convert to FF_TZ
 }
 function buildFFUrl(d) {
   const month = d.format('MMM').toLowerCase()
@@ -127,7 +127,7 @@ fetchAndStore()
 
 async function fetchOneDay(d) {
   const url = buildFFUrl(d)
-  //   const browser = await puppeteer.launch({ headless: true })
+  // const browser = await puppeteer.launch({ headless: true })
 
   const browser = await puppeteer.launch({
     headless: true,
@@ -187,12 +187,10 @@ async function fetchOneDay(d) {
   }, d.format('YYYY-MM-DD'))
   await browser.close()
   console.log('events', events)
-
   return events.filter(
     (e) =>
       e.time && (e.time.match(/\d/) || e.time.toLowerCase() === 'tentative')
   )
-
   // end fetchOneDay
 }
 
@@ -217,20 +215,15 @@ app.get('/ff-news', async (req, res) => {
           const ampm = timeMatch[3].toLowerCase()
           if (ampm === 'pm' && hour !== 12) hour += 12
           if (ampm === 'am' && hour === 12) hour = 0
-          const parsedUtc = dayjs
-            .utc(e.date)
+          const parsedET = dayjs
+            .tz(e.date, 'America/New_York')
             .hour(hour)
             .minute(min)
             .second(0)
             .millisecond(0)
-          unix = parsedUtc.unix()
-          const parsedLocal = dayjs
-            .tz(e.date, FF_TZ)
-            .hour(hour)
-            .minute(min)
-            .second(0)
-            .millisecond(0)
-          unix_7 = parsedLocal.unix()
+          unix = parsedET.unix() // ET time unix
+          const parsedLocal = parsedET.tz(FF_TZ)
+          unix_7 = parsedLocal.unix() // FF_TZ time unix
         }
       } catch (err) {
         //
@@ -277,12 +270,13 @@ app.get('/checknews', async (req, res) => {
           const ampm = timeMatch[3].toLowerCase()
           if (ampm === 'pm' && hour !== 12) hour += 12
           if (ampm === 'am' && hour === 12) hour = 0
-          const parsedLocal = dayjs
-            .tz(e.date, FF_TZ)
+          const parsedET = dayjs
+            .tz(e.date, 'America/New_York')
             .hour(hour)
             .minute(min)
             .second(0)
             .millisecond(0)
+          const parsedLocal = parsedET.tz(FF_TZ)
           unix_7 = parsedLocal.unix()
         }
       } catch (err) {}
