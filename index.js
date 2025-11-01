@@ -80,7 +80,7 @@ async function fetchAndStore() {
             const ampm = timeMatch[3].toLowerCase()
             if (ampm === 'pm' && hour !== 12) hour += 12
             if (ampm === 'am' && hour === 12) hour = 0
-            eventHour = hour
+            eventHour = hour - 1 // for server sigapore time diff
             eventMin = min
           }
         } catch (err) {}
