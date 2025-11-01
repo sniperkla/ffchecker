@@ -194,6 +194,22 @@ async function fetchOneDay(d) {
     return events
   }, d.format('YYYY-MM-DD'))
   await browser.close()
+  // Convert scraped times to Bangkok time
+  events.forEach(e => {
+    if (e.time) {
+      const timeMatch = e.time.match(/(\d+):(\d+)(am|pm)/i)
+      if (timeMatch) {
+        let hour = parseInt(timeMatch[1])
+        const min = parseInt(timeMatch[2])
+        const ampm = timeMatch[3].toLowerCase()
+        if (ampm === 'pm' && hour !== 12) hour += 12
+        if (ampm === 'am' && hour === 12) hour = 0
+        const parsedET = dayjs.tz(e.date, 'America/New_York').hour(hour).minute(min)
+        const bangkokTime = parsedET.tz(FF_TZ)
+        e.time = bangkokTime.format('h:mma').toLowerCase() // e.g., 11:00pm
+      }
+    }
+  })
   console.log('events', events)
   return events.filter(
     (e) =>
