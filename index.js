@@ -114,10 +114,12 @@ async function fetchOneDay(d) {
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--lang=th-TH', // Set browser language to Thai
-      '--timezone=Asia/Bangkok', // Set timezone to Thailand (UTC+7)
-      '--no-sandbox'
-    ]
+      '--lang=en-US,en',
+      '--force-timezone=Asia/Bangkok'
+    ],
+    env: {
+      TZ: 'Asia/Bangkok'
+    }
   })
   const page = await browser.newPage()
   await page.setUserAgent(
@@ -232,7 +234,7 @@ app.get('/checknews', async (req, res) => {
         (max, e) => Math.max(max, e.eventHour * 60 + e.eventMin),
         0
       )
-        upcomingEvent.stoptime = maxTotalMin + 60
+      upcomingEvent.stoptime = maxTotalMin + 60
     }
     const response = {
       status: upcomingEvent ? 'stop' : 'normal',
