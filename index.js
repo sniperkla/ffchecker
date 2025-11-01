@@ -123,9 +123,18 @@ async function fetchOneDay(d) {
     }
   })
   const page = await browser.newPage()
+  await page.emulateTimezone('Asia/Bangkok')
+
+  // Optional: ensure locale also aligns
+  await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' })
   await page.setUserAgent(
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0 Safari/537.36'
   )
+  const tz = await page.evaluate(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone
+  )
+  console.log('Browser timezone inside page:', tz)
+
   await page.goto(url, { waitUntil: 'networkidle2' })
   // Try to select table rows with event data
   const events = await page.evaluate((dateStr) => {
