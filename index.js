@@ -140,11 +140,12 @@ async function fetchOneDay(d) {
     ]
   })
   const page = await browser.newPage()
+  await page.setGeolocation({ latitude: 13.7563, longitude: 100.5018 }) // Bangkok
   await page.emulateTimezone('Asia/Bangkok')
+
   await page.setUserAgent(
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0 Safari/537.36'
   )
-
   await page.goto(url, { waitUntil: 'networkidle2' })
   // Try to select table rows with event data
   const events = await page.evaluate((dateStr) => {
