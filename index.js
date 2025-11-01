@@ -121,13 +121,14 @@ async function fetchAndStore() {
 }
 
 // Run every 3 minutes
-setInterval(fetchAndStore, 9 * 60 * 1000)
+setInterval(fetchAndStore, 2 * 60 * 1000)
 // Run once at startup
 fetchAndStore()
 
 async function fetchOneDay(d) {
   const url = buildFFUrl(d)
   //   const browser = await puppeteer.launch({ headless: true })
+
   const browser = await puppeteer.launch({
     headless: true,
     executablePath: '/usr/bin/chromium-browser',
@@ -135,14 +136,15 @@ async function fetchOneDay(d) {
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--lang=th-TH', // Set browser language to Thai
-      '--timezone=Asia/Bangkok', // Set timezone to Thailand (UTC+7)
-      '--no-sandbox'
+      '--timezone=Asia/Bangkok' // Set timezone to Thailand (UTC+7)
     ]
   })
   const page = await browser.newPage()
+  await page.emulateTimezone('Asia/Bangkok')
   await page.setUserAgent(
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0 Safari/537.36'
   )
+
   await page.goto(url, { waitUntil: 'networkidle2' })
   // Try to select table rows with event data
   const events = await page.evaluate((dateStr) => {
