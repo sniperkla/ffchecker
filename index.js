@@ -24,6 +24,7 @@ const PORT = process.env.PORT || 5001
 const FF_TZ = 'Asia/Bangkok' // you can change
 const DAYS_AHEAD = 3
 const BASE_URL = 'https://www.forexfactory.com/calendar'
+process.env.TZ = 'Asia/Bangkok'
 
 const MONGODB_URI =
   process.env.MONGODB_URI || 'mongodb://admin:AaBb1234!@188.166.213.216/qdragon'
