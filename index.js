@@ -1,25 +1,4 @@
 // Set Puppeteer to use system Chromium
-function toUnix(dateStr, timeStr) {
-  if (!timeStr) return null
-  if (/all day/i.test(timeStr)) return null
-
-  const timeMatch = timeStr.match(/(\d+):(\d+)(am|pm)/i)
-  if (!timeMatch) return null
-  let hour = parseInt(timeMatch[1])
-  const min = parseInt(timeMatch[2])
-  const ampm = timeMatch[3].toLowerCase()
-  if (ampm === 'pm' && hour !== 12) hour += 12
-  if (ampm === 'am' && hour === 12) hour = 0
-
-  const parsed = dayjs
-    .tz(dateStr, FF_TZ)
-    .hour(hour)
-    .minute(min)
-    .second(0)
-    .millisecond(0)
-  if (!parsed.isValid()) return null
-  return parsed.unix()
-}
 function buildFFUrl(d) {
   const month = d.format('MMM').toLowerCase()
   const day = d.format('D')
@@ -84,11 +63,14 @@ async function fetchAndStore() {
       }
       console.log(`Upserted ${upserted} events to MongoDB`)
       // Cleanup past events
-      const nowUnix = dayjs().unix()
+      const currentHour = dayjs().tz(FF_TZ).hour()
+      const currentMin = dayjs().tz(FF_TZ).minute()
+      const currentTotalMin = currentHour * 60 + currentMin
       const allDocs = await col.find({}).toArray()
       const toDelete = []
       for (const e of allDocs) {
-        let unix_7 = null
+        let eventHour = null
+        let eventMin = null
         try {
           const timeMatch = e.time.match(/(\d+):(\d+)(am|pm)/i)
           if (timeMatch) {
@@ -97,17 +79,15 @@ async function fetchAndStore() {
             const ampm = timeMatch[3].toLowerCase()
             if (ampm === 'pm' && hour !== 12) hour += 12
             if (ampm === 'am' && hour === 12) hour = 0
-            const parsedLocal = dayjs
-              .tz(e.date, FF_TZ)
-              .hour(hour)
-              .minute(min)
-              .second(0)
-              .millisecond(0)
-            unix_7 = parsedLocal.unix()
+            eventHour = hour
+            eventMin = min
           }
         } catch (err) {}
-        if (unix_7 && unix_7 + 30 * 60 <= nowUnix) {
-          toDelete.push({ _id: e._id })
+        if (eventHour !== null && eventMin !== null) {
+          const eventTotalMin = eventHour * 60 + eventMin
+          if (eventTotalMin + 30 <= currentTotalMin) {
+            toDelete.push({ _id: e._id })
+          }
         }
       }
       if (toDelete.length > 0) {
@@ -127,18 +107,18 @@ fetchAndStore()
 
 async function fetchOneDay(d) {
   const url = buildFFUrl(d)
-  //   const browser = await puppeteer.launch({ headless: true })
-  const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: '/usr/bin/chromium-browser',
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--lang=th-TH', // Set browser language to Thai
-      '--timezone=Asia/Bangkok', // Set timezone to Thailand (UTC+7)
-      '--no-sandbox'
-    ]
-  })
+  const browser = await puppeteer.launch({ headless: true })
+  // const browser = await puppeteer.launch({
+  //   headless: true,
+  //   executablePath: '/usr/bin/chromium-browser',
+  //   args: [
+  //     '--no-sandbox',
+  //     '--disable-setuid-sandbox',
+  //     '--lang=th-TH', // Set browser language to Thai
+  //     '--timezone=Asia/Bangkok', // Set timezone to Thailand (UTC+7)
+  //     '--no-sandbox'
+  //   ]
+  // })
   const page = await browser.newPage()
   await page.setUserAgent(
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0 Safari/537.36'
@@ -189,58 +169,6 @@ async function fetchOneDay(d) {
   // end fetchOneDay
 }
 
-app.get('/ff-news', async (req, res) => {
-  console.log('Received request for /ff-news')
-  try {
-    if (!db) await connectMongo()
-    const today = dayjs().tz(FF_TZ).format('YYYY-MM-DD')
-    const col = db.collection('ff_events')
-    // Find only today's USD events
-    const docs = await col.find({ date: today, currency: 'USD' }).toArray()
-    // Convert time to unix
-    const events = docs.map((e) => {
-      let unix = null
-      let unix_7 = null
-      try {
-        console.log(e.date, e.time)
-        const timeMatch = e.time.match(/(\d+):(\d+)(am|pm)/i)
-        if (timeMatch) {
-          let hour = parseInt(timeMatch[1])
-          const min = parseInt(timeMatch[2])
-          const ampm = timeMatch[3].toLowerCase()
-          if (ampm === 'pm' && hour !== 12) hour += 12
-          if (ampm === 'am' && hour === 12) hour = 0
-          const parsedUtc = dayjs
-            .utc(e.date)
-            .hour(hour)
-            .minute(min)
-            .second(0)
-            .millisecond(0)
-          unix = parsedUtc.unix()
-          const parsedLocal = dayjs
-            .tz(e.date, FF_TZ)
-            .hour(hour)
-            .minute(min)
-            .second(0)
-            .millisecond(0)
-          unix_7 = parsedLocal.unix()
-        }
-      } catch (err) {
-        //
-      }
-      return { ...e, unix, unix_7 }
-    })
-    res.json({
-      timezone: FF_TZ,
-      generated_at: dayjs().unix(),
-      events
-    })
-  } catch (e) {
-    console.error(e)
-    res.status(500).json({ error: 'failed to fetch ff calendar' })
-  }
-})
-
 let checkNewsCache = null
 let cacheExpiry = 0
 
@@ -257,11 +185,14 @@ app.get('/checknews', async (req, res) => {
     const col = db.collection('ff_events')
     // Find only today's USD events
     const docs = await col.find({ date: today, currency: 'USD' }).toArray()
-    const nowUnix = dayjs().unix()
+    const currentHour = dayjs().tz(FF_TZ).hour()
+    const currentMin = dayjs().tz(FF_TZ).minute()
+    const currentTotalMin = currentHour * 60 + currentMin
     let upcomingEvents = []
     let nextEvent = null
     for (const e of docs) {
-      let unix_7 = null
+      let eventHour = null
+      let eventMin = null
       try {
         const timeMatch = e.time.match(/(\d+):(\d+)(am|pm)/i)
         if (timeMatch) {
@@ -270,46 +201,51 @@ app.get('/checknews', async (req, res) => {
           const ampm = timeMatch[3].toLowerCase()
           if (ampm === 'pm' && hour !== 12) hour += 12
           if (ampm === 'am' && hour === 12) hour = 0
-          const parsedLocal = dayjs
-            .tz(e.date, FF_TZ)
-            .hour(hour)
-            .minute(min)
-            .second(0)
-            .millisecond(0)
-          unix_7 = parsedLocal.unix()
+          eventHour = hour
+          eventMin = min
         }
       } catch (err) {}
-      if (
-        unix_7 &&
-        nowUnix >= unix_7 - 30 * 60 &&
-        nowUnix <= unix_7 + 30 * 60
-      ) {
-        upcomingEvents.push({ ...e, unix_7, stoptime: unix_7 })
-      } else if (
-        unix_7 &&
-        unix_7 > nowUnix &&
-        (!nextEvent || unix_7 < nextEvent.unix_7)
-      ) {
-        nextEvent = { ...e, unix_7 }
+      if (eventHour !== null && eventMin !== null) {
+        const eventTotalMin = eventHour * 60 + eventMin
+        const diffMin = Math.abs(eventTotalMin - currentTotalMin)
+        if (diffMin <= 30) {
+          upcomingEvents.push({ ...e, eventHour, eventMin })
+        } else if (
+          eventTotalMin > currentTotalMin &&
+          (!nextEvent ||
+            eventTotalMin < nextEvent.eventHour * 60 + nextEvent.eventMin)
+        ) {
+          nextEvent = { ...e, eventHour, eventMin }
+        }
       }
     }
     let upcomingEvent = null
     if (upcomingEvents.length > 0) {
-      // Find the one with max unix_7
+      // Find the one with max eventTotalMin
       upcomingEvent = upcomingEvents.reduce((max, e) =>
-        e.unix_7 > max.unix_7 ? e : max
+        e.eventHour * 60 + e.eventMin > max.eventHour * 60 + max.eventMin
+          ? e
+          : max
       )
       // Adjust stoptime to max + 30 min
-      const maxUnix = upcomingEvents.reduce(
-        (max, e) => Math.max(max, e.unix_7),
+      const maxTotalMin = upcomingEvents.reduce(
+        (max, e) => Math.max(max, e.eventHour * 60 + e.eventMin),
         0
       )
-      upcomingEvent.stoptime = maxUnix + 30 * 60
+        upcomingEvent.stoptime = maxTotalMin + 60
     }
     const response = {
-      status: upcomingEvent ? 'stoptrading' : 'normal',
-      ...(upcomingEvent && { event: upcomingEvent }),
-      ...(nextEvent && { next_event: nextEvent }),
+      status: upcomingEvent ? 'stop' : 'normal',
+      ...(upcomingEvent && {
+        event: { ...upcomingEvent, eventHour: undefined, eventMin: undefined }
+      }),
+      ...(nextEvent && {
+        next_event: {
+          ...nextEvent,
+          eventHour: undefined,
+          eventMin: undefined
+        }
+      }),
       cached: false
     }
     // Cache for 60 seconds
