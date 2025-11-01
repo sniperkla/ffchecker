@@ -146,6 +146,10 @@ async function fetchOneDay(d) {
   await page.setUserAgent(
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0 Safari/537.36'
   )
+  const browserTimezone = await page.evaluate(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone
+  )
+  console.log('Browser timezone:', browserTimezone)
   await page.goto(url, { waitUntil: 'networkidle2' })
   // Try to select table rows with event data
   const events = await page.evaluate((dateStr) => {
