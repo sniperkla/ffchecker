@@ -112,21 +112,11 @@ async function fetchOneDay(d) {
   const browser = await puppeteer.launch({
     headless: true,
     executablePath: '/usr/bin/chromium-browser',
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--lang=en-US,en',
-      '--force-timezone=Asia/Bangkok'
-    ],
-    env: {
-      TZ: 'Asia/Bangkok'
-    }
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--lang=en-US,en']
   })
   const page = await browser.newPage()
-  await page.emulateTimezone('Asia/Bangkok')
 
   // Optional: ensure locale also aligns
-  await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' })
   await page.setUserAgent(
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0 Safari/537.36'
   )
