@@ -26,6 +26,10 @@ const DAYS_AHEAD = 3
 const BASE_URL = 'https://www.forexfactory.com/calendar'
 process.env.TZ = 'Asia/Bangkok'
 
+// Proxy settings (set these env vars if needed to spoof IP)
+const PROXY_HOST = process.env.PROXY_HOST
+const PROXY_PORT = process.env.PROXY_PORT
+
 const MONGODB_URI =
   process.env.MONGODB_URI || 'mongodb://admin:AaBb1234!@188.166.213.216/qdragon'
 const MONGODB_DB = process.env.MONGODB_DB || 'qdragon'
@@ -80,7 +84,7 @@ async function fetchAndStore() {
             const ampm = timeMatch[3].toLowerCase()
             if (ampm === 'pm' && hour !== 12) hour += 12
             if (ampm === 'am' && hour === 12) hour = 0
-            eventHour = hour - 1 // for server sigapore time diff
+            eventHour = hour
             eventMin = min
           }
         } catch (err) {}
@@ -109,10 +113,18 @@ fetchAndStore()
 async function fetchOneDay(d) {
   const url = buildFFUrl(d)
   // const browser = await puppeteer.launch({ headless: true })
+  const args = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--lang=en-US,en'
+  ]
+  if (PROXY_HOST && PROXY_PORT) {
+    args.push(`--proxy-server=http://${PROXY_HOST}:${PROXY_PORT}`)
+  }
   const browser = await puppeteer.launch({
     headless: true,
     executablePath: '/usr/bin/chromium-browser',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--lang=en-US,en']
+    args: args
   })
   const page = await browser.newPage()
 
@@ -120,10 +132,6 @@ async function fetchOneDay(d) {
   await page.setUserAgent(
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0 Safari/537.36'
   )
-  const tz = await page.evaluate(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone
-  )
-  console.log('Browser timezone inside page:', tz)
 
   await page.goto(url, { waitUntil: 'networkidle2' })
   // Try to select table rows with event data
@@ -144,6 +152,24 @@ async function fetchOneDay(d) {
       let time = ''
       if (tds.length > 0) {
         time = tds[0].innerText.trim()
+        // Adjust time by -1 hour
+        const timeMatch = time.match(/(\d+):(\d+)(am|pm)/i)
+        if (timeMatch) {
+          let hour = parseInt(timeMatch[1])
+          const min = parseInt(timeMatch[2])
+          const ampm = timeMatch[3].toLowerCase()
+          if (ampm === 'pm' && hour !== 12) hour += 12
+          if (ampm === 'am' && hour === 12) hour = 0
+          hour -= 1
+          if (hour < 0) hour = 23
+          let newAmpm = 'am'
+          if (hour >= 12) {
+            newAmpm = 'pm'
+            if (hour > 12) hour -= 12
+          }
+          if (hour === 0) hour = 12
+          time = `${hour}:${min.toString().padStart(2, '0')}${newAmpm}`
+        }
       }
       let currency = ''
       if (tds.length > 2) {
