@@ -68,32 +68,38 @@ async function fetchAndStore() {
       }
       console.log(`Upserted ${upserted} events to MongoDB`)
       // Cleanup past events
+      const today = dayjs().tz(FF_TZ).format('YYYY-MM-DD')
       const currentHour = dayjs().tz(FF_TZ).hour()
       const currentMin = dayjs().tz(FF_TZ).minute()
       const currentTotalMin = currentHour * 60 + currentMin
       const allDocs = await col.find({}).toArray()
       const toDelete = []
       for (const e of allDocs) {
-        let eventHour = null
-        let eventMin = null
-        try {
-          const timeMatch = e.time.match(/(\d+):(\d+)(am|pm)/i)
-          if (timeMatch) {
-            let hour = parseInt(timeMatch[1])
-            const min = parseInt(timeMatch[2])
-            const ampm = timeMatch[3].toLowerCase()
-            if (ampm === 'pm' && hour !== 12) hour += 12
-            if (ampm === 'am' && hour === 12) hour = 0
-            eventHour = hour
-            eventMin = min
-          }
-        } catch (err) {}
-        if (eventHour !== null && eventMin !== null) {
-          const eventTotalMin = eventHour * 60 + eventMin
-          if (eventTotalMin + 30 <= currentTotalMin) {
-            toDelete.push({ _id: e._id })
+        if (e.date < today) {
+          toDelete.push({ _id: e._id })
+        } else if (e.date === today) {
+          let eventHour = null
+          let eventMin = null
+          try {
+            const timeMatch = e.time.match(/(\d+):(\d+)(am|pm)/i)
+            if (timeMatch) {
+              let hour = parseInt(timeMatch[1])
+              const min = parseInt(timeMatch[2])
+              const ampm = timeMatch[3].toLowerCase()
+              if (ampm === 'pm' && hour !== 12) hour += 12
+              if (ampm === 'am' && hour === 12) hour = 0
+              eventHour = hour
+              eventMin = min
+            }
+          } catch (err) {}
+          if (eventHour !== null && eventMin !== null) {
+            const eventTotalMin = eventHour * 60 + eventMin
+            if (eventTotalMin + 30 <= currentTotalMin) {
+              toDelete.push({ _id: e._id })
+            }
           }
         }
+        // For future dates, don't clean
       }
       if (toDelete.length > 0) {
         await col.deleteMany({ $or: toDelete })
@@ -113,11 +119,7 @@ fetchAndStore()
 async function fetchOneDay(d) {
   const url = buildFFUrl(d)
   // const browser = await puppeteer.launch({ headless: true })
-  const args = [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--lang=en-US,en'
-  ]
+  const args = ['--no-sandbox', '--disable-setuid-sandbox', '--lang=en-US,en']
   if (PROXY_HOST && PROXY_PORT) {
     args.push(`--proxy-server=http://${PROXY_HOST}:${PROXY_PORT}`)
   }
