@@ -119,14 +119,14 @@ fetchAndStore()
 async function fetchOneDay(d) {
   const url = buildFFUrl(d)
   // const browser = await puppeteer.launch({ headless: true })
-  const args = ['--no-sandbox', '--disable-setuid-sandbox', '--lang=en-US,en']
-  if (PROXY_HOST && PROXY_PORT) {
-    args.push(`--proxy-server=http://${PROXY_HOST}:${PROXY_PORT}`)
-  }
+  // const args = ['--no-sandbox', '--disable-setuid-sandbox', '--lang=en-US,en']
+  // if (PROXY_HOST && PROXY_PORT) {
+  //   args.push(`--proxy-server=http://${PROXY_HOST}:${PROXY_PORT}`)
+  // }
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: '/usr/bin/chromium-browser',
-    args: args
+    executablePath: '/usr/bin/chromium-browser'
+    // args: args
   })
   const page = await browser.newPage()
 
@@ -202,13 +202,13 @@ async function fetchOneDay(d) {
 let checkNewsCache = null
 let cacheExpiry = 0
 
-app.get('/checknews', async (req, res) => {
+app.get('/news', async (req, res) => {
   const now = Date.now()
   if (checkNewsCache && now < cacheExpiry) {
     return res.json({ ...checkNewsCache, cached: true })
   }
 
-  console.log('Received request for /checknews')
+  console.log('Received request for /news')
   try {
     if (!db) await connectMongo()
     const today = dayjs().tz(FF_TZ).format('YYYY-MM-DD')
