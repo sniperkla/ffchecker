@@ -158,7 +158,8 @@ async function fetchOneDay(d, browser) {
         let impact = null
         const impactTitle = impactCell.getAttribute('title') || ''
         if (impactTitle.includes('High Impact Expected')) impact = 'High'
-        else if (impactTitle.includes('Med Impact Expected')) impact = 'Medium'
+        else if (impactTitle.includes('Medium Impact Expected'))
+          impact = 'Medium'
         else if (impactTitle.includes('Low Impact Expected')) impact = 'Low'
         if (!impact) return
         const tds = row.querySelectorAll('td')
