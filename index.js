@@ -78,7 +78,8 @@ async function fetchAndStore() {
       const now = new Date()
       let upserted = 0
       for (const e of all) {
-        const filter = { date: e.date, title: e.title }
+        // Use date, time, currency, and impact to identify the same event
+        const filter = { date: e.date, time: e.time, currency: e.currency, impact: e.impact }
         const update = { $set: { ...e, fetched_at: now } }
         const result = await col.updateOne(filter, update, { upsert: true })
         if (result.upsertedCount > 0 || result.modifiedCount > 0) upserted++
