@@ -193,6 +193,30 @@ async function fetchOneDay(d, browser) {
           }
         }
         // Handle multiple currencies/titles in the same row
+        // Always get time from the first td (time cell)
+        const timeCell = row.querySelector('td.calendar__time')
+        let rowTime = time
+        if (timeCell) {
+          rowTime = timeCell.innerText.trim()
+          // Adjust time by -1 hour
+          const timeMatch = rowTime.match(/(\d+):(\d+)(am|pm)/i)
+          if (timeMatch) {
+            let hour = parseInt(timeMatch[1])
+            const min = parseInt(timeMatch[2])
+            const ampm = timeMatch[3].toLowerCase()
+            if (ampm === 'pm' && hour !== 12) hour += 12
+            if (ampm === 'am' && hour === 12) hour = 0
+            hour -= 1
+            if (hour < 0) hour = 23
+            let newAmpm = 'am'
+            if (hour >= 12) {
+              newAmpm = 'pm'
+              if (hour > 12) hour -= 12
+            }
+            if (hour === 0) hour = 12
+            rowTime = `${hour}:${min.toString().padStart(2, '0')}${newAmpm}`
+          }
+        }
         // Find all currency cells in the row
         const currencyCells = row.querySelectorAll('td.calendar__currency')
         const titleCells = row.querySelectorAll('.calendar__event-title')
@@ -208,7 +232,7 @@ async function fetchOneDay(d, browser) {
             title = eventTitle.innerText.trim()
           }
           if (currency === 'USD') {
-            events.push({ date: dateStr, time, impact, title, currency })
+            events.push({ date: dateStr, time: rowTime, impact, title, currency })
           }
         } else {
           // Loop through all currency/title pairs
@@ -219,7 +243,7 @@ async function fetchOneDay(d, browser) {
               title = titleCells[i].innerText.trim()
             }
             if (currency === 'USD') {
-              events.push({ date: dateStr, time, impact, title, currency })
+              events.push({ date: dateStr, time: rowTime, impact, title, currency })
             }
           }
         }
