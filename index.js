@@ -166,8 +166,7 @@ async function fetchOneDay(d, browser) {
         let impact = null
         const impactTitle = impactCell.getAttribute('title') || ''
         if (impactTitle.includes('High Impact Expected')) impact = 'High'
-        else if (impactTitle.includes('Medium Impact Expected'))
-          impact = 'Medium'
+        else if (impactTitle.includes('Medium Impact Expected')) impact = 'Medium'
         else if (impactTitle.includes('Low Impact Expected')) impact = 'Low'
         if (!impact) return
         const tds = row.querySelectorAll('td')
@@ -193,18 +192,37 @@ async function fetchOneDay(d, browser) {
             time = `${hour}:${min.toString().padStart(2, '0')}${newAmpm}`
           }
         }
-        let currency = ''
-        if (tds.length > 2) {
-          currency = tds[2].innerText.trim()
+        // Handle multiple currencies/titles in the same row
+        // Find all currency cells in the row
+        const currencyCells = row.querySelectorAll('td.calendar__currency')
+        const titleCells = row.querySelectorAll('.calendar__event-title')
+        // If no currency cell, fallback to old logic
+        if (currencyCells.length === 0) {
+          let currency = ''
+          if (tds.length > 2) {
+            currency = tds[2].innerText.trim()
+          }
+          let title = ''
+          const eventTitle = row.querySelector('.calendar__event-title')
+          if (eventTitle) {
+            title = eventTitle.innerText.trim()
+          }
+          if (currency === 'USD') {
+            events.push({ date: dateStr, time, impact, title, currency })
+          }
+        } else {
+          // Loop through all currency/title pairs
+          for (let i = 0; i < currencyCells.length; i++) {
+            const currency = currencyCells[i].innerText.trim()
+            let title = ''
+            if (titleCells[i]) {
+              title = titleCells[i].innerText.trim()
+            }
+            if (currency === 'USD') {
+              events.push({ date: dateStr, time, impact, title, currency })
+            }
+          }
         }
-        let title = ''
-        const eventTitle = row.querySelector('.calendar__event-title')
-        if (eventTitle) {
-          title = eventTitle.innerText.trim()
-        }
-        if (currency !== 'USD') return
-        const event = { date: dateStr, time, impact, title, currency }
-        events.push(event)
       })
       return events
     }, d.format('YYYY-MM-DD'))
