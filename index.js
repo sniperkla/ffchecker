@@ -1,17 +1,15 @@
 // Set Puppeteer to use system Chromium
-function buildFFUrl(d) {
-  const month = d.format('MMM').toLowerCase()
-  const day = d.format('D')
-  const year = d.format('YYYY')
-  return `${BASE_URL}?day=${month}${day}.${year}`
-}
+
 // server.js
 import express from 'express'
 import { MongoClient } from 'mongodb'
 import dotenv from 'dotenv'
 dotenv.config()
-import puppeteer from 'puppeteer'
+import puppeteer from 'puppeteer-extra'
+import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import dayjs from 'dayjs'
+
+puppeteer.use(StealthPlugin())
 import utc from 'dayjs/plugin/utc.js'
 import timezone from 'dayjs/plugin/timezone.js'
 
@@ -60,36 +58,80 @@ async function fetchAndStore() {
     ]
 
     browser = await puppeteer.launch({
-      headless: true,
-      executablePath: '/usr/bin/chromium-browser',
+      headless: false,
+      executablePath: process.env.CHROME_PATH || undefined,
       args: args
     })
-    for (let i = 0; i <= DAYS_AHEAD; i++) {
-      const d = tzNow.add(i, 'day')
-      const ev = await fetchOneDay(d, browser)
-      all = all.concat(ev)
-      // Add delay between requests to reduce load
-      if (i < DAYS_AHEAD)
-        await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    // Scrape the main calendar page
+    const scrapedEvents = await fetchCalendar(browser)
+
+    // Filter for DAYS_AHEAD days
+    const targetDates = []
+    // Include yesterday just in case of timezone differences
+    targetDates.push(tzNow.subtract(1, 'day').format('YYYY-MM-DD'))
+    for (let i = 0; i < DAYS_AHEAD; i++) {
+      targetDates.push(tzNow.add(i, 'day').format('YYYY-MM-DD'))
     }
+    all = scrapedEvents.filter((e) => targetDates.includes(e.date))
+
+    // Summary of data before storing
+    const summary = {
+      totalEvents: all.length,
+      dateRange: targetDates,
+      breakdown: {}
+    }
+
+    all.forEach((e) => {
+      if (!summary.breakdown[e.date]) {
+        summary.breakdown[e.date] = { total: 0, impacts: {} }
+      }
+      summary.breakdown[e.date].total++
+      summary.breakdown[e.date].impacts[e.impact] =
+        (summary.breakdown[e.date].impacts[e.impact] || 0) + 1
+    })
+
+    console.log('--- Pre-DB Storage Summary ---')
+    console.log(JSON.stringify(summary, null, 2))
+    console.log('------------------------------')
+
     if (!db) await connectMongo()
     if (db) {
       const col = db.collection('ff_events')
       const now = new Date()
       let upserted = 0
       for (const e of all) {
-        // Use date, currency, and impact to identify the same event
-        const filter = { date: e.date, currency: e.currency, impact: e.impact }
-        // Find any existing event with same filter but different title or time
+        // Use unique ID from ForexFactory to identify the event
+        const filter = { id: e.id }
+
+        // Find any existing event
         const oldEvent = await col.findOne(filter)
-        if (oldEvent && (oldEvent.title !== e.title || oldEvent.time !== e.time)) {
-          // Delete the outdated event
-          await col.deleteOne({ _id: oldEvent._id })
+        if (oldEvent) {
+          // Update existing event
+          const update = { $set: { ...e, fetched_at: now } }
+          await col.updateOne(filter, update)
+          if (
+            oldEvent.title !== e.title ||
+            oldEvent.time !== e.time ||
+            oldEvent.impact !== e.impact
+          ) {
+            // Log change if needed
+          }
+        } else {
+          // Insert new event
+          // Check if we have a legacy event (no id) with same title/date to avoid duplicates
+          // This is a one-time migration helper
+          const legacyFilter = {
+            date: e.date,
+            currency: e.currency,
+            title: e.title
+          }
+          await col.deleteMany(legacyFilter)
+
+          const update = { $set: { ...e, fetched_at: now } }
+          await col.updateOne(filter, update, { upsert: true })
+          upserted++
         }
-        // Upsert the new event
-        const update = { $set: { ...e, fetched_at: now } }
-        const result = await col.updateOne(filter, update, { upsert: true })
-        if (result.upsertedCount > 0 || result.modifiedCount > 0) upserted++
       }
       console.log(`Upserted ${upserted} events to MongoDB`)
       // Cleanup past events
@@ -138,125 +180,111 @@ async function fetchAndStore() {
   }
 }
 
-// Run every 3 minutes
-setInterval(fetchAndStore, 9 * 60 * 1000)
+// Run every 45 minutes
+setInterval(fetchAndStore, 45 * 60 * 1000)
 // Run once at startup
 fetchAndStore()
 
-async function fetchOneDay(d, browser) {
+async function fetchCalendar(browser) {
   let page = null
   try {
     page = await browser.newPage()
-    await page.setViewport({ width: 800, height: 600 })
-    await page.setDefaultTimeout(30000)
-    const url = buildFFUrl(d)
-    await page.setUserAgent(
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0 Safari/537.36'
-    )
+    await page.setViewport({ width: 1920, height: 1080 })
+    await page.setDefaultTimeout(60000)
 
-    await page.goto(url, { waitUntil: 'domcontentloaded' })
-    // Try to select table rows with event data
-    const events = await page.evaluate((dateStr) => {
-      const rows = Array.from(document.querySelectorAll('tr'))
-      const events = []
-      rows.forEach((row) => {
-        if (row.classList.contains('calendar__row--grey')) return
-        const impactCell = row.querySelector('td.calendar__impact .icon')
-        if (!impactCell) return
-        let impact = null
-        const impactTitle = impactCell.getAttribute('title') || ''
-        if (impactTitle.includes('High Impact Expected')) impact = 'High'
-        else if (impactTitle.includes('Medium Impact Expected')) impact = 'Medium'
-        else if (impactTitle.includes('Low Impact Expected')) impact = 'Low'
-        if (!impact) return
-        const tds = row.querySelectorAll('td')
-        let time = ''
-        if (tds.length > 0) {
-          time = tds[0].innerText.trim()
-          // Adjust time by -1 hour
-          const timeMatch = time.match(/(\d+):(\d+)(am|pm)/i)
-          if (timeMatch) {
-            let hour = parseInt(timeMatch[1])
-            const min = parseInt(timeMatch[2])
-            const ampm = timeMatch[3].toLowerCase()
-            if (ampm === 'pm' && hour !== 12) hour += 12
-            if (ampm === 'am' && hour === 12) hour = 0
-            hour -= 1
-            if (hour < 0) hour = 23
-            let newAmpm = 'am'
-            if (hour >= 12) {
-              newAmpm = 'pm'
-              if (hour > 12) hour -= 12
-            }
-            if (hour === 0) hour = 12
-            time = `${hour}:${min.toString().padStart(2, '0')}${newAmpm}`
-          }
+    // Go to main page first to pass Cloudflare
+    await page.goto(BASE_URL, { waitUntil: 'networkidle2', timeout: 60000 })
+
+    // Prepare payload
+    const beginDate = dayjs().tz(FF_TZ).format('MMMM D, YYYY')
+    const endDate = dayjs()
+      .tz(FF_TZ)
+      .add(DAYS_AHEAD, 'day')
+      .format('MMMM D, YYYY')
+
+    const payload = {
+      begin_date: beginDate,
+      end_date: endDate,
+      default_view: 'this_week',
+      impacts: [3, 2, 1],
+      event_types: [1, 2, 3, 4, 5, 7, 8, 9, 10, 11],
+      currencies: [9] // USD
+    }
+
+    console.log('Fetching calendar with payload:', JSON.stringify(payload))
+
+    // Execute fetch in browser
+    const responseData = await page.evaluate(async (payload) => {
+      const res = await fetch(
+        'https://www.forexfactory.com/calendar/apply-settings/1?navigation=0',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify(payload)
         }
-        // Handle multiple currencies/titles in the same row
-        // Always get time from the first td (time cell)
-        const timeCell = row.querySelector('td.calendar__time')
-        let rowTime = time
-        if (timeCell) {
-          rowTime = timeCell.innerText.trim()
-          // Adjust time by -1 hour
-          const timeMatch = rowTime.match(/(\d+):(\d+)(am|pm)/i)
-          if (timeMatch) {
-            let hour = parseInt(timeMatch[1])
-            const min = parseInt(timeMatch[2])
-            const ampm = timeMatch[3].toLowerCase()
-            if (ampm === 'pm' && hour !== 12) hour += 12
-            if (ampm === 'am' && hour === 12) hour = 0
-            hour -= 1
-            if (hour < 0) hour = 23
-            let newAmpm = 'am'
-            if (hour >= 12) {
-              newAmpm = 'pm'
-              if (hour > 12) hour -= 12
+      )
+      if (!res.ok) throw new Error('Fetch failed: ' + res.status)
+      return res.json()
+    }, payload)
+
+    if (!responseData || !responseData.days) {
+      console.log('No days data in response from apply-settings')
+      return []
+    }
+
+    // Parse JSON data directly
+    const rawEvents = []
+    if (Array.isArray(responseData.days)) {
+      responseData.days.forEach((day) => {
+        if (day.events && Array.isArray(day.events)) {
+          day.events.forEach((e) => {
+            // Map fields
+            let impact = null
+            const impactTitle = e.impactTitle || ''
+            if (impactTitle.includes('High Impact Expected')) impact = 'High'
+            else if (impactTitle.includes('Medium Impact Expected'))
+              impact = 'Medium'
+            else if (impactTitle.includes('Low Impact Expected')) impact = 'Low'
+            else if (impactTitle.includes('Non-Economic'))
+              impact = 'Non-Economic'
+
+            if (!impact) return
+            if (e.currency !== 'USD') return
+
+            // Use dateline for accurate date/time
+            const dt = dayjs.unix(e.dateline).tz(FF_TZ)
+            const date = dt.format('YYYY-MM-DD')
+            let time = dt.format('h:mmA').toLowerCase()
+
+            // Check if timeLabel indicates it's not a specific time
+            if (e.timeLabel && !e.timeLabel.match(/\d+:\d+/)) {
+              time = e.timeLabel
             }
-            if (hour === 0) hour = 12
-            rowTime = `${hour}:${min.toString().padStart(2, '0')}${newAmpm}`
-          }
-        }
-        // Find all currency cells in the row
-        const currencyCells = row.querySelectorAll('td.calendar__currency')
-        const titleCells = row.querySelectorAll('.calendar__event-title')
-        // If no currency cell, fallback to old logic
-        if (currencyCells.length === 0) {
-          let currency = ''
-          if (tds.length > 2) {
-            currency = tds[2].innerText.trim()
-          }
-          let title = ''
-          const eventTitle = row.querySelector('.calendar__event-title')
-          if (eventTitle) {
-            title = eventTitle.innerText.trim()
-          }
-          if (currency === 'USD') {
-            events.push({ date: dateStr, time: rowTime, impact, title, currency })
-          }
-        } else {
-          // Loop through all currency/title pairs
-          for (let i = 0; i < currencyCells.length; i++) {
-            const currency = currencyCells[i].innerText.trim()
-            let title = ''
-            if (titleCells[i]) {
-              title = titleCells[i].innerText.trim()
+            const event = {
+              id: e.id,
+              date,
+              time,
+              impact,
+              title: e.name,
+              currency: e.currency
             }
-            if (currency === 'USD') {
-              events.push({ date: dateStr, time: rowTime, impact, title, currency })
-            }
-          }
+            rawEvents.push(event)
+          })
         }
       })
-      return events
-    }, d.format('YYYY-MM-DD'))
-    console.log('events for', d.format('YYYY-MM-DD'), events)
-    return events.filter(
+    }
+
+    console.log(`Scraped ${rawEvents.length} events via API`)
+
+    return rawEvents.filter(
       (e) =>
         e.time && (e.time.match(/\d/) || e.time.toLowerCase() === 'tentative')
     )
   } catch (error) {
-    console.error('Error scraping', d.format('YYYY-MM-DD'), error)
+    console.error('Error scraping calendar', error)
     return []
   } finally {
     if (page) await page.close()
