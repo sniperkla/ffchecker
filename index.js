@@ -393,7 +393,20 @@ app.get('/now', async (req, res) => {
 
     const now = dayjs().tz(FF_TZ)
     const currentDate = now.format('YYYY-MM-DD')
-    const currentTime = now.format('h:mm A')
+    const currentTime = now.format('HH:mm')
+
+    // Helper to convert 12h to 24h format
+    const to24h = (time12) => {
+      if (!time12 || !time12.match(/\d+:\d+(am|pm)/i)) return time12
+      const match = time12.match(/(\d+):(\d+)(am|pm)/i)
+      if (!match) return time12
+      let hour = parseInt(match[1])
+      const min = match[2]
+      const ampm = match[3].toLowerCase()
+      if (ampm === 'pm' && hour !== 12) hour += 12
+      if (ampm === 'am' && hour === 12) hour = 0
+      return `${hour.toString().padStart(2, '0')}:${min}`
+    }
 
     // Group events by date
     const eventsByDate = {}
@@ -576,9 +589,10 @@ app.get('/now', async (req, res) => {
         for (const event of eventsByDate[date]) {
           const colors =
             impactColors[event.impact] || impactColors['Non-Economic']
+          const displayTime = to24h(event.time)
           html += `
         <div class="event">
-          <div class="event-time">${event.time}</div>
+          <div class="event-time">${displayTime}</div>
           <div class="event-impact" style="background: ${colors.bg}; color: ${colors.text}; border: 1px solid ${colors.border};">${event.impact}</div>
           <div class="event-title">${event.title}</div>
           <div class="event-currency">${event.currency}</div>
