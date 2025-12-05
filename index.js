@@ -58,7 +58,7 @@ async function fetchAndStore() {
     ]
 
     browser = await puppeteer.launch({
-      headless: false,
+      headless: process.env.HEADLESS !== 'false',
       executablePath: process.env.CHROME_PATH || undefined,
       args: args
     })
