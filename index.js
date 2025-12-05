@@ -385,27 +385,27 @@ app.get('/news', async (req, res) => {
 })
 
 // Beautiful HTML page to view all events
-app.get('/check', async (req, res) => {
+app.get('/now', async (req, res) => {
   try {
     if (!db) await connectMongo()
     const col = db.collection('ff_events')
     const docs = await col.find({}).sort({ date: 1, time: 1 }).toArray()
-    
+
     const now = dayjs().tz(FF_TZ)
     const currentDate = now.format('YYYY-MM-DD')
     const currentTime = now.format('h:mm A')
-    
+
     // Group events by date
     const eventsByDate = {}
-    docs.forEach(e => {
+    docs.forEach((e) => {
       if (!eventsByDate[e.date]) eventsByDate[e.date] = []
       eventsByDate[e.date].push(e)
     })
 
     const impactColors = {
-      'High': { bg: '#fee2e2', border: '#ef4444', text: '#dc2626' },
-      'Medium': { bg: '#fef3c7', border: '#f59e0b', text: '#d97706' },
-      'Low': { bg: '#dbeafe', border: '#3b82f6', text: '#2563eb' },
+      High: { bg: '#fee2e2', border: '#ef4444', text: '#dc2626' },
+      Medium: { bg: '#fef3c7', border: '#f59e0b', text: '#d97706' },
+      Low: { bg: '#dbeafe', border: '#3b82f6', text: '#2563eb' },
       'Non-Economic': { bg: '#f3f4f6', border: '#9ca3af', text: '#6b7280' }
     }
 
@@ -557,7 +557,7 @@ app.get('/check', async (req, res) => {
 `
 
     const sortedDates = Object.keys(eventsByDate).sort()
-    
+
     if (sortedDates.length === 0) {
       html += '<div class="no-events">No events found in database</div>'
     } else {
@@ -565,14 +565,17 @@ app.get('/check', async (req, res) => {
         const isToday = date === currentDate
         const dateObj = dayjs(date)
         const formattedDate = dateObj.format('dddd, MMMM D, YYYY')
-        
+
         html += `
     <div class="date-section">
-      <div class="date-header ${isToday ? 'today' : ''}">${isToday ? '📍 TODAY - ' : ''}${formattedDate}</div>
+      <div class="date-header ${isToday ? 'today' : ''}">${
+          isToday ? '📍 TODAY - ' : ''
+        }${formattedDate}</div>
       <div class="events-list">
 `
         for (const event of eventsByDate[date]) {
-          const colors = impactColors[event.impact] || impactColors['Non-Economic']
+          const colors =
+            impactColors[event.impact] || impactColors['Non-Economic']
           html += `
         <div class="event">
           <div class="event-time">${event.time}</div>
