@@ -64,36 +64,64 @@ app.get('/tailwind-test', (req, res) => {
       <title>Tailwind Test Page</title>
       <script src="https://cdn.tailwindcss.com"></script>
     </head>
-    <body class="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-700 to-cyan-500 text-white">
-      <div class="mx-auto max-w-5xl px-6 py-12">
-        <div class="rounded-3xl border border-white/20 bg-white/10 p-8 shadow-2xl backdrop-blur-xl">
-          <h1 class="text-4xl font-bold mb-4">Tailwind Test Page</h1>
-          <p class="mb-6 text-lg leading-relaxed text-slate-200">
-            This page is designed to verify Tailwind CSS styling using the CDN and to provide a simple test layout.
-            Open this endpoint while the server is running to confirm that the Tailwind utilities are loaded correctly.
-          </p>
-          <div class="grid gap-6 lg:grid-cols-2">
-            <div class="rounded-2xl border border-slate-200/10 bg-slate-950/80 p-6">
-              <h2 class="text-2xl font-semibold mb-3">Test details</h2>
-              <ul class="list-disc list-inside space-y-2 text-slate-300">
-                <li>Tailwind CDN loaded from <code class="rounded bg-slate-900 px-1 py-0.5">https://cdn.tailwindcss.com</code></li>
-                <li>Responsive layout and utility classes</li>
-                <li>Typography, spacing, and card styles shown</li>
-                <li>Use this page for quick visual verification</li>
-              </ul>
-            </div>
-            <div class="rounded-2xl border border-slate-200/10 bg-slate-950/80 p-6">
-              <h2 class="text-2xl font-semibold mb-3">How to use</h2>
-              <p class="text-slate-300 leading-relaxed">
-                Visit <code class="rounded bg-slate-900 px-1 py-0.5">/tailwind-test</code> from your browser and check that the page renders with styled sections, buttons, and background gradients.
+    <body class="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.25),_transparent_25%),linear-gradient(180deg,_#0f172a_0%,_#0f172a_40%,_#0f172a_100%)] text-white">
+      <div class="relative mx-auto max-w-6xl px-6 py-12">
+        <div class="absolute left-1/2 top-0 h-64 w-64 -translate-x-1/2 rounded-full bg-cyan-400/20 blur-3xl opacity-70 animate-pulse"></div>
+        <div class="relative rounded-[2rem] border border-white/10 bg-slate-950/95 p-10 shadow-[0_40px_120px_-40px_rgba(14,165,233,0.45)] backdrop-blur-xl">
+          <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div class="space-y-4">
+              <p class="inline-flex items-center rounded-full bg-cyan-500/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.24em] text-cyan-300 shadow-sm shadow-cyan-500/10">
+                Tailwind Live Test</p>
+              <h1 class="text-5xl font-extrabold tracking-tight text-white sm:text-6xl">Tailwind page verification</h1>
+              <p class="max-w-2xl text-lg leading-8 text-slate-300">
+                This page demonstrates Tailwind CSS rendering through the CDN, with animated cards, responsive layout, and interactive utility styling. Use it to verify that your Node server can serve styled HTML content without a separate CSS build step.
               </p>
-              <p class="mt-4 text-slate-200"><strong>Endpoint:</strong> <code class="rounded bg-slate-900 px-1 py-0.5">/tailwind-test</code></p>
+            </div>
+            <div class="rounded-3xl border border-slate-800/80 bg-slate-900/80 p-6 shadow-xl shadow-cyan-500/10 backdrop-blur-xl">
+              <div class="animate-bounce rounded-2xl bg-cyan-500/10 p-5 text-cyan-200 shadow-inner shadow-cyan-500/20">
+                <p class="text-sm uppercase tracking-[0.24em] text-cyan-300">Animated status</p>
+                <p class="mt-3 text-2xl font-semibold">Tailwind is active</p>
+              </div>
             </div>
           </div>
-          <div class="mt-8">
-            <a href="/" class="inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/20">
-              ← Back to Home
-            </a>
+
+          <div class="mt-10 grid gap-6 lg:grid-cols-3">
+            <div class="group rounded-3xl border border-slate-700/80 bg-slate-950/90 p-6 transition duration-500 hover:-translate-y-1 hover:border-cyan-400/40 hover:bg-slate-900/95">
+              <h2 class="text-xl font-semibold text-white">Why this page</h2>
+              <p class="mt-3 text-slate-300 leading-relaxed">
+                It confirms Tailwind is loaded, verifies responsive breakpoints, and shows animation utilities like <code class="rounded bg-slate-900 px-1 py-0.5">animate-pulse</code> and <code class="rounded bg-slate-900 px-1 py-0.5">animate-bounce</code>.
+              </p>
+            </div>
+            <div class="group rounded-3xl border border-slate-700/80 bg-slate-950/90 p-6 transition duration-500 hover:-translate-y-1 hover:border-indigo-400/40 hover:bg-slate-900/95">
+              <h2 class="text-xl font-semibold text-white">What to verify</h2>
+              <ul class="mt-3 space-y-3 text-slate-300">
+                <li>✅ Gradient background and blurred highlight</li>
+                <li>✅ Animated pulse and bounce elements</li>
+                <li>✅ Responsive layout on mobile and desktop</li>
+                <li>✅ Tailwind CDN utilities rendering correctly</li>
+              </ul>
+            </div>
+            <div class="group rounded-3xl border border-slate-700/80 bg-slate-950/90 p-6 transition duration-500 hover:-translate-y-1 hover:border-emerald-400/40 hover:bg-slate-900/95">
+              <h2 class="text-xl font-semibold text-white">How to use it</h2>
+              <p class="mt-3 text-slate-300 leading-relaxed">
+                Open <code class="rounded bg-slate-900 px-1 py-0.5">/tailwind-test</code> and confirm the page loads with animated cards, a highlighted CTA, and a clean responsive design. Refreshing is not required to verify the styling layer.
+              </p>
+            </div>
+          </div>
+
+          <div class="mt-10 rounded-[2rem] border border-cyan-500/10 bg-cyan-500/5 p-6 shadow-[0_30px_60px_-30px_rgba(56,189,248,0.7)]">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p class="text-sm uppercase tracking-[0.18em] text-cyan-200">Live deploy check</p>
+                <h2 class="mt-2 text-2xl font-semibold text-white">Autodeploy watch support</h2>
+                <p class="mt-3 max-w-2xl text-slate-100 leading-7">
+                  If your app is configured for auto-deploy or hot reload, this page is a visual checkpoint: whenever you push code, the browser should show the latest Tailwind rendering after the deployment completes.
+                </p>
+              </div>
+              <a href="/" class="inline-flex items-center justify-center rounded-full bg-cyan-500 px-6 py-3 text-sm font-semibold text-slate-950 transition duration-300 hover:bg-cyan-400">
+                Back to Home
+              </a>
+            </div>
           </div>
         </div>
       </div>
