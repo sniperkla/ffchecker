@@ -29,7 +29,7 @@ const MONGODB_URI =
 const MONGODB_DB = process.env.MONGODB_DB || 'qdragon'
 let mongoClient
 let db
-console.log("hell")
+console.log("hel")
 
 async function connectMongo() {
   if (!mongoClient) {
