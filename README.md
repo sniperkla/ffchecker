@@ -50,6 +50,16 @@ This project provides an API to check Forex news events and control trading in M
 ## Server Setup
 - Run `node index.js` to start the API server.
 - Ensure MongoDB is connected and populated with Forex events.
+- Visit `http://localhost:5001/tailwind-test` to verify the Tailwind test page while the server is running.
+
+## Tailwind Test Page
+- The `/tailwind-test` endpoint renders a simple Tailwind-styled page using the Tailwind CDN.
+- Use this page to confirm your server can serve HTML with Tailwind utility classes.
+- It includes:
+  - a responsive layout,
+  - styled cards and typography,
+  - a quick description of the test details,
+  - a link back to the home page.
 
 ## Notes
 - API responses are cached for 60 seconds to handle multiple clients.
