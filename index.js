@@ -53,6 +53,56 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
+// Hello Beautiful endpoint
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Hello World Beautiful</title>
+      <style>
+        body {
+          margin: 0;
+          padding: 0;
+          height: 100vh;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+          text-align: center;
+          color: white;
+        }
+        h1 {
+          font-size: 4rem;
+          margin: 0;
+          text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+          animation: fadeIn 1s ease-in;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .emoji {
+          font-size: 3rem;
+          margin-bottom: 20px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="emoji">✨</div>
+        <h1>Hello World Beautiful!</h1>
+      </div>
+    </body>
+    </html>
+  `)
+})
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Test server running on http://localhost:${PORT}`)
