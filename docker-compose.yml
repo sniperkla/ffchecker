@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ffchecker-app
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ENV=production
+      - PORT=5001
+      - MONGODB_URI=mongodb://mongo:27017/ffchecker
+      - MONGODB_DB=ffchecker
+      - TZ=Asia/Bangkok
+    depends_on:
+      - mongo
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - ffchecker-network
+
+  mongo:
+    image: mongo:7.0
+    container_name: ffchecker-mongo
+    environment:
+      - MONGO_INITDB_DATABASE=ffchecker
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    restart: unless-stopped
+    networks:
+      - ffchecker-network
+
+volumes:
+  mongo_data:
+  mongo_config:
+
+networks:
+  ffchecker-network:
+    driver: bridge
