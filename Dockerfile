@@ -1,20 +1,16 @@
-FROM rockylinux:9
-
-# Install Node.js LTS
-RUN dnf install -y nodejs npm && \
-    dnf clean all && rm -rf /var/cache/dnf/*
+FROM node:20-alpine AS base
 
 WORKDIR /app
 
-# Copy package files
+# Install dependencies
 COPY package*.json ./
+RUN npm install --production
 
-# Install dependencies (Puppeteer will download its own Chromium)
-RUN npm install
-
-# Copy application files
+# Copy app sources
 COPY . .
 
 EXPOSE 5001
 
-CMD ["npm", "start"]
+USER node
+
+CMD ["node", "index.js"]
