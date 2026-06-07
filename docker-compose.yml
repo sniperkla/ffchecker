@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ffchecker
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - proxy-net
+networks:
+  proxy-net:
+    external: true
