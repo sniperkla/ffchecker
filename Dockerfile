@@ -1,16 +1,14 @@
-FROM node:20-alpine AS base
+FROM node:22-alpine
 
 WORKDIR /app
 
-# Install dependencies
 COPY package*.json ./
-RUN npm install --production
 
-# Copy app sources
+RUN npm cache clean --force \
+ && npm ci
+
 COPY . .
 
 EXPOSE 5001
 
-USER node
-
-CMD ["node", "index.js"]
+CMD ["npm", "start"]
