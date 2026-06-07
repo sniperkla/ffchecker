@@ -178,7 +178,7 @@ app.get('/', (req, res) => {
     <body>
       <div class="container">
         <div class="emoji">✨</div>
-        <h1>รักเฟิร์น นะจ๊ะ12</h1>
+        <h1>รักเฟิร์น นะจ๊ะ5000</h1>
         <p class="subtext">Try the Tailwind test page at <strong>/tailwind-test</strong> to verify Tailwind CSS styling.</p>
       </div>
     </body>
